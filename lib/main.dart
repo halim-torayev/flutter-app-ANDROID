@@ -1,121 +1,290 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const TipsApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class TipsApp extends StatelessWidget {
+  const TipsApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Tips',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.dark(
+          surface: const Color(0xFF121212),
+          primary: const Color(0xFF6C63FF),
+          secondary: const Color(0xFF03DAC6),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        useMaterial3: true,
+        fontFamily: 'Roboto',
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const HomeScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _HomeScreenState extends State<HomeScreen> {
+  final List<String> categories = [
+    '🔥 All',
+    '🎓 University',
+    '🍔 Food',
+    '⚽ Sports',
+    '🛍️ Shopping',
+    '💻 Tech',
+    '✈️ Travel',
+    '💰 Finance',
+  ];
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  int selectedCategoryIndex = 0;
+
+  // Dummy tips for now
+  final List<Map<String, String>> tips = [
+    {
+      'category': 'Shopping',
+      'title': 'Apple Student Discount',
+      'description':
+          'Students get 20% discount at official Apple stores. Just show your student ID!',
+    },
+    {
+      'category': 'University',
+      'title': 'Free Microsoft Office',
+      'description':
+          'Most universities give you free Microsoft Office 365 with your student email.',
+    },
+    {
+      'category': 'Food',
+      'title': 'Free Birthday Meals',
+      'description':
+          'Many restaurants in Turkey offer free meals on your birthday. Just show your ID!',
+    },
+    {
+      'category': 'Tech',
+      'title': 'GitHub Student Pack',
+      'description':
+          'Get free domains, cloud credits, and premium tools with GitHub Student Developer Pack.',
+    },
+    {
+      'category': 'Travel',
+      'title': 'Museum Card Turkey',
+      'description':
+          'The Müzekart gives you access to 300+ museums and ruins across Turkey for a yearly fee.',
+    },
+  ];
+
+  List<Map<String, String>> get filteredTips {
+    if (selectedCategoryIndex == 0) return tips; // "All"
+    final selectedCategory = categories[selectedCategoryIndex]
+        .substring(2)
+        .trim(); // Remove emoji
+    return tips.where((tip) => tip['category'] == selectedCategory).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        title: const Text(
+          'Tips',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+            color: Colors.white,
+          ),
         ),
+        backgroundColor: const Color(0xFF1E1E1E),
+        elevation: 0,
       ),
+      body: Column(
+        children: [
+          // Category Tabs
+          Container(
+            color: const Color(0xFF1E1E1E),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: SizedBox(
+              height: 40,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final isSelected = index == selectedCategoryIndex;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedCategoryIndex = index;
+                      });
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF6C63FF)
+                            : const Color(0xFF2A2A2A),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF6C63FF)
+                              : const Color(0xFF3A3A3A),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        categories[index],
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.grey[400],
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+
+          // Tips Feed
+          Expanded(
+            child: filteredTips.isEmpty
+                ? Center(
+                    child: Text(
+                      'No tips in this category yet',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 16),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: filteredTips.length,
+                    itemBuilder: (context, index) {
+                      final tip = filteredTips[index];
+                      return _buildTipCard(tip);
+                    },
+                  ),
+          ),
+        ],
+      ),
+
+      // FAB + button
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+        onPressed: () {
+          // Will add submit screen later
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Submit screen coming soon!')),
+          );
+        },
+        backgroundColor: const Color(0xFF6C63FF),
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
+      ),
+    );
+  }
+
+  Widget _buildTipCard(Map<String, String> tip) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2A2A2A), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Author row
+          Row(
+            children: [
+              // Anonymous avatar
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFF6C63FF).withOpacity(0.2),
+                child: const Icon(
+                  Icons.person,
+                  color: Color(0xFF6C63FF),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Anonymous',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    tip['category'] ?? '',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              // Category chip
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C63FF).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  tip['category'] ?? '',
+                  style: const TextStyle(
+                    color: Color(0xFF6C63FF),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Title
+          Text(
+            tip['title'] ?? '',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // Description
+          Text(
+            tip['description'] ?? '',
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ],
       ),
     );
   }
