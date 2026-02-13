@@ -804,10 +804,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 const SizedBox(width: 16),
                 _buildActionButton(Icons.bookmark_outline_rounded, ''),
                 const Spacer(),
-                const Icon(
-                  Icons.more_horiz_rounded,
-                  color: Color(0xFF48484A),
-                  size: 20,
+                GestureDetector(
+                  onTap: () => _showTipOptions(docId, tip['authorId'] ?? ''),
+                  child: const Icon(
+                    Icons.more_horiz_rounded,
+                    color: Color(0xFF48484A),
+                    size: 20,
+                  ),
                 ),
               ],
             ),
@@ -840,6 +843,151 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'upvotedBy': FieldValue.arrayUnion([userId]),
       });
     }
+  }
+
+  void _showTipOptions(String docId, String authorId) {
+    final currentUserId = AuthService.currentUser?.uid;
+    final isOwner = currentUserId != null && currentUserId == authorId;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1C1C1E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF48484A),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (isOwner)
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmDelete(docId);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF375F).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.delete_outline_rounded,
+                            color: Color(0xFFFF375F), size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Delete Tip',
+                          style: TextStyle(
+                            color: Color(0xFFFF375F),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Text(
+                    'No actions available',
+                    style: TextStyle(
+                      color: Color(0xFF8E8E93),
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2C2C2E),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Color(0xFF8E8E93),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(String docId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1C1C1E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Delete Tip?',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: const Text(
+            'This action cannot be undone.',
+            style: TextStyle(color: Color(0xFF8E8E93)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Color(0xFF8E8E93)),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await tipsCollection.doc(docId).delete();
+              },
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  color: Color(0xFFFF375F),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildActionButton(IconData icon, String label) {
