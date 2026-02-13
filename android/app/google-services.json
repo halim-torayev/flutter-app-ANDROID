@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "31272838826",
+    "project_id": "tips-app-2f709",
+    "storage_bucket": "tips-app-2f709.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:31272838826:android:12552a65f617c1c0a0d2d3",
+        "android_client_info": {
+          "package_name": "com.example.tips"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCb0KO0vaVNCNLM8GwIAAe4XxoayBw0KIg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

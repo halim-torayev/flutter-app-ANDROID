@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -66,14 +72,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   int selectedCategoryIndex = 0;
 
-  // Start with empty feed
-  final List<Map<String, String>> tips = [];
-
-  List<Map<String, String>> get filteredTips {
-    if (selectedCategoryIndex == 0) return tips;
-    final selectedCategory = categories[selectedCategoryIndex];
-    return tips.where((tip) => tip['category'] == selectedCategory).toList();
-  }
+  // Firestore reference
+  final CollectionReference tipsCollection =
+      FirebaseFirestore.instance.collection('tips');
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +113,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  // Profile icon placeholder
                   Container(
                     width: 36,
                     height: 36,
@@ -194,24 +194,58 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
             const SizedBox(height: 8),
 
-            // Divider
             Container(
               height: 0.5,
               color: const Color(0xFF1C1C1E),
             ),
 
-            // Tips Feed
+            // Tips Feed from Firestore
             Expanded(
-              child: filteredTips.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                      itemCount: filteredTips.length,
-                      itemBuilder: (context, index) {
-                        final tip = filteredTips[index];
-                        return _buildTipCard(tip, index);
-                      },
-                    ),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: selectedCategoryIndex == 0
+                    ? tipsCollection
+                        .orderBy('createdAt', descending: true)
+                        .snapshots()
+                    : tipsCollection
+                        .where('category',
+                            isEqualTo: categories[selectedCategoryIndex])
+                        .orderBy('createdAt', descending: true)
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF0A84FF),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Something went wrong',
+                        style: TextStyle(color: Colors.grey[500]),
+                      ),
+                    );
+                  }
+
+                  final tips = snapshot.data?.docs ?? [];
+
+                  if (tips.isEmpty) {
+                    return _buildEmptyState();
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                    itemCount: tips.length,
+                    itemBuilder: (context, index) {
+                      final tip =
+                          tips[index].data() as Map<String, dynamic>;
+                      return _buildTipCard(tip, index);
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -244,8 +278,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             );
             if (newTip != null) {
-              setState(() {
-                tips.insert(0, newTip);
+              // Save to Firestore
+              await tipsCollection.add({
+                ...newTip,
+                'createdAt': FieldValue.serverTimestamp(),
               });
             }
           },
@@ -267,7 +303,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ],
             ),
-            child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
+            child:
+                const Icon(Icons.add_rounded, color: Colors.white, size: 30),
           ),
         ),
       ),
@@ -303,11 +340,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Be the first to share a life hack!\nTap + to get started.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: const Color(0xFF8E8E93),
+              color: Color(0xFF8E8E93),
               fontSize: 15,
               height: 1.4,
             ),
@@ -317,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildTipCard(Map<String, String> tip, int index) {
+  Widget _buildTipCard(Map<String, dynamic> tip, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -329,7 +366,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Author row
             Row(
               children: [
                 Container(
@@ -339,7 +375,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     gradient: LinearGradient(
                       colors: [
                         _getCategoryColor(tip['category'] ?? ''),
-                        _getCategoryColor(tip['category'] ?? '').withOpacity(0.6),
+                        _getCategoryColor(tip['category'] ?? '')
+                            .withOpacity(0.6),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -383,7 +420,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: _getCategoryColor(tip['category'] ?? '').withOpacity(0.15),
+                    color: _getCategoryColor(tip['category'] ?? '')
+                        .withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -398,8 +436,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ],
             ),
             const SizedBox(height: 12),
-
-            // Title
             Text(
               tip['title'] ?? '',
               style: const TextStyle(
@@ -410,8 +446,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
             const SizedBox(height: 6),
-
-            // Description
             Text(
               tip['description'] ?? '',
               style: const TextStyle(
@@ -421,10 +455,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 fontWeight: FontWeight.w400,
               ),
             ),
-
             const SizedBox(height: 12),
-
-            // Action row
             Row(
               children: [
                 _buildActionButton(Icons.arrow_upward_rounded, '0'),
@@ -433,9 +464,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 const SizedBox(width: 16),
                 _buildActionButton(Icons.bookmark_outline_rounded, ''),
                 const Spacer(),
-                Icon(
+                const Icon(
                   Icons.more_horiz_rounded,
-                  color: const Color(0xFF48484A),
+                  color: Color(0xFF48484A),
                   size: 20,
                 ),
               ],
@@ -571,9 +602,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categoryNames = widget.categories
-        .where((c) => c != 'All')
-        .toList();
+    final categoryNames =
+        widget.categories.where((c) => c != 'All').toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
@@ -608,7 +638,8 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
             onTap: _submitTip,
             child: Container(
               margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
               decoration: BoxDecoration(
                 color: const Color(0xFF0A84FF),
                 borderRadius: BorderRadius.circular(16),
@@ -630,7 +661,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Category Selector
             const Text(
               'Category',
               style: TextStyle(
@@ -677,13 +707,16 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                         Icon(
                           categoryIcons[category],
                           size: 16,
-                          color: isSelected ? color : const Color(0xFF8E8E93),
+                          color:
+                              isSelected ? color : const Color(0xFF8E8E93),
                         ),
                         const SizedBox(width: 6),
                         Text(
                           category,
                           style: TextStyle(
-                            color: isSelected ? color : const Color(0xFF8E8E93),
+                            color: isSelected
+                                ? color
+                                : const Color(0xFF8E8E93),
                             fontWeight: isSelected
                                 ? FontWeight.w600
                                 : FontWeight.w400,
@@ -697,8 +730,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
               }).toList(),
             ),
             const SizedBox(height: 28),
-
-            // Title Field
             const Text(
               'Title',
               style: TextStyle(
@@ -742,8 +773,6 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
               ),
             ),
             const SizedBox(height: 28),
-
-            // Description Field
             const Text(
               'Description',
               style: TextStyle(
