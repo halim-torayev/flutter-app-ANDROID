@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:ui';
 
 void main() {
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
   runApp(const TipsApp());
 }
 
@@ -14,13 +22,12 @@ class TipsApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.dark(
-          surface: const Color(0xFF121212),
-          primary: const Color(0xFF6C63FF),
-          secondary: const Color(0xFF03DAC6),
+          surface: const Color(0xFF000000),
+          primary: const Color(0xFF0A84FF),
+          secondary: const Color(0xFF30D158),
         ),
-        scaffoldBackgroundColor: const Color(0xFF121212),
+        scaffoldBackgroundColor: const Color(0xFF000000),
         useMaterial3: true,
-        fontFamily: 'Roboto',
       ),
       home: const HomeScreen(),
     );
@@ -34,88 +41,103 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final List<String> categories = [
-    '🔥 All',
-    '🎓 University',
-    '🍔 Food',
-    '⚽ Sports',
-    '🛍️ Shopping',
-    '💻 Tech',
-    '✈️ Travel',
-    '💰 Finance',
+    'All',
+    'University',
+    'Food',
+    'Sports',
+    'Shopping',
+    'Tech',
+    'Travel',
+    'Finance',
   ];
+
+  final Map<String, IconData> categoryIcons = {
+    'All': Icons.grid_view_rounded,
+    'University': Icons.school_rounded,
+    'Food': Icons.restaurant_rounded,
+    'Sports': Icons.sports_soccer_rounded,
+    'Shopping': Icons.shopping_bag_rounded,
+    'Tech': Icons.devices_rounded,
+    'Travel': Icons.flight_rounded,
+    'Finance': Icons.account_balance_wallet_rounded,
+  };
 
   int selectedCategoryIndex = 0;
 
-  // Dummy tips for now
-  final List<Map<String, String>> tips = [
-    {
-      'category': 'Shopping',
-      'title': 'Apple Student Discount',
-      'description':
-          'Students get 20% discount at official Apple stores. Just show your student ID!',
-    },
-    {
-      'category': 'University',
-      'title': 'Free Microsoft Office',
-      'description':
-          'Most universities give you free Microsoft Office 365 with your student email.',
-    },
-    {
-      'category': 'Food',
-      'title': 'Free Birthday Meals',
-      'description':
-          'Many restaurants in Turkey offer free meals on your birthday. Just show your ID!',
-    },
-    {
-      'category': 'Tech',
-      'title': 'GitHub Student Pack',
-      'description':
-          'Get free domains, cloud credits, and premium tools with GitHub Student Developer Pack.',
-    },
-    {
-      'category': 'Travel',
-      'title': 'Museum Card Turkey',
-      'description':
-          'The Müzekart gives you access to 300+ museums and ruins across Turkey for a yearly fee.',
-    },
-  ];
+  // Start with empty feed
+  final List<Map<String, String>> tips = [];
 
   List<Map<String, String>> get filteredTips {
-    if (selectedCategoryIndex == 0) return tips; // "All"
-    final selectedCategory = categories[selectedCategoryIndex]
-        .substring(2)
-        .trim(); // Remove emoji
+    if (selectedCategoryIndex == 0) return tips;
+    final selectedCategory = categories[selectedCategoryIndex];
     return tips.where((tip) => tip['category'] == selectedCategory).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Tips',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: const Color(0xFF1E1E1E),
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          // Category Tabs
-          Container(
-            color: const Color(0xFF1E1E1E),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: SizedBox(
-              height: 40,
+      backgroundColor: const Color(0xFF000000),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tips',
+                        style: TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Discover life hacks',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF8E8E93),
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Profile icon placeholder
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C1C1E),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      color: Color(0xFF8E8E93),
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Category Tabs
+            SizedBox(
+              height: 38,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: categories.length,
                 itemBuilder: (context, index) {
                   final isSelected = index == selectedCategoryIndex;
@@ -125,175 +147,343 @@ class _HomeScreenState extends State<HomeScreen> {
                         selectedCategoryIndex = index;
                       });
                     },
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
+                        horizontal: 14,
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF6C63FF)
-                            : const Color(0xFF2A2A2A),
+                            ? const Color(0xFF0A84FF)
+                            : const Color(0xFF1C1C1E),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF6C63FF)
-                              : const Color(0xFF3A3A3A),
-                          width: 1,
-                        ),
                       ),
-                      child: Text(
-                        categories[index],
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.grey[400],
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 14,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            categoryIcons[categories[index]],
+                            size: 16,
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFF8E8E93),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            categories[index],
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF8E8E93),
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
                 },
               ),
             ),
-          ),
 
-          // Tips Feed
-          Expanded(
-            child: filteredTips.isEmpty
-                ? Center(
-                    child: Text(
-                      'No tips in this category yet',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 16),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: filteredTips.length,
-                    itemBuilder: (context, index) {
-                      final tip = filteredTips[index];
-                      return _buildTipCard(tip);
-                    },
-                  ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 8),
 
-      // FAB + button
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final newTip = await Navigator.push<Map<String, String>>(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SubmitTipScreen(categories: categories),
+            // Divider
+            Container(
+              height: 0.5,
+              color: const Color(0xFF1C1C1E),
             ),
-          );
-          if (newTip != null) {
-            setState(() {
-              tips.insert(0, newTip); // Add to top of feed
-            });
-          }
-        },
-        backgroundColor: const Color(0xFF6C63FF),
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
+
+            // Tips Feed
+            Expanded(
+              child: filteredTips.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                      itemCount: filteredTips.length,
+                      itemBuilder: (context, index) {
+                        final tip = filteredTips[index];
+                        return _buildTipCard(tip, index);
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
+
+      // FAB
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: GestureDetector(
+          onTap: () async {
+            final newTip = await Navigator.push<Map<String, String>>(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    SubmitTipScreen(categories: categories),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 1),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    )),
+                    child: child,
+                  );
+                },
+                transitionDuration: const Duration(milliseconds: 400),
+              ),
+            );
+            if (newTip != null) {
+              setState(() {
+                tips.insert(0, newTip);
+              });
+            }
+          },
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0A84FF), Color(0xFF5856D6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0A84FF).withOpacity(0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  Widget _buildTipCard(Map<String, String> tip) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2A2A2A), width: 1),
-      ),
+  Widget _buildEmptyState() {
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Author row
-          Row(
-            children: [
-              // Anonymous avatar
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: const Color(0xFF6C63FF).withOpacity(0.2),
-                child: const Icon(
-                  Icons.person,
-                  color: Color(0xFF6C63FF),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Anonymous',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Text(
-                    tip['category'] ?? '',
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              // Category chip
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  tip['category'] ?? '',
-                  style: const TextStyle(
-                    color: Color(0xFF6C63FF),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Title
-          Text(
-            tip['title'] ?? '',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.white,
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1C1E),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(
+              Icons.lightbulb_outline_rounded,
+              color: Color(0xFF0A84FF),
+              size: 40,
             ),
           ),
-          const SizedBox(height: 6),
-
-          // Description
-          Text(
-            tip['description'] ?? '',
+          const SizedBox(height: 20),
+          const Text(
+            'No tips yet',
             style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 14,
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Be the first to share a life hack!\nTap + to get started.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xFF8E8E93),
+              fontSize: 15,
               height: 1.4,
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildTipCard(Map<String, String> tip, int index) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1E),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Author row
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _getCategoryColor(tip['category'] ?? ''),
+                        _getCategoryColor(tip['category'] ?? '').withOpacity(0.6),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    categoryIcons[tip['category']] ?? Icons.lightbulb_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Anonymous',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        tip['category'] ?? '',
+                        style: const TextStyle(
+                          color: Color(0xFF8E8E93),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getCategoryColor(tip['category'] ?? '').withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    tip['category'] ?? '',
+                    style: TextStyle(
+                      color: _getCategoryColor(tip['category'] ?? ''),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Title
+            Text(
+              tip['title'] ?? '',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: Colors.white,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+
+            // Description
+            Text(
+              tip['description'] ?? '',
+              style: const TextStyle(
+                color: Color(0xFF8E8E93),
+                fontSize: 14,
+                height: 1.5,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Action row
+            Row(
+              children: [
+                _buildActionButton(Icons.arrow_upward_rounded, '0'),
+                const SizedBox(width: 16),
+                _buildActionButton(Icons.chat_bubble_outline_rounded, '0'),
+                const SizedBox(width: 16),
+                _buildActionButton(Icons.bookmark_outline_rounded, ''),
+                const Spacer(),
+                Icon(
+                  Icons.more_horiz_rounded,
+                  color: const Color(0xFF48484A),
+                  size: 20,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(IconData icon, String label) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFF48484A), size: 18),
+        if (label.isNotEmpty) ...[
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF48484A),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'University':
+        return const Color(0xFF5856D6);
+      case 'Food':
+        return const Color(0xFFFF9F0A);
+      case 'Sports':
+        return const Color(0xFF30D158);
+      case 'Shopping':
+        return const Color(0xFFFF375F);
+      case 'Tech':
+        return const Color(0xFF0A84FF);
+      case 'Travel':
+        return const Color(0xFF64D2FF);
+      case 'Finance':
+        return const Color(0xFFFFD60A);
+      default:
+        return const Color(0xFF0A84FF);
+    }
   }
 }
 
@@ -311,6 +501,16 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
   final _descriptionController = TextEditingController();
   String? _selectedCategory;
 
+  final Map<String, IconData> categoryIcons = {
+    'University': Icons.school_rounded,
+    'Food': Icons.restaurant_rounded,
+    'Sports': Icons.sports_soccer_rounded,
+    'Shopping': Icons.shopping_bag_rounded,
+    'Tech': Icons.devices_rounded,
+    'Travel': Icons.flight_rounded,
+    'Finance': Icons.account_balance_wallet_rounded,
+  };
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -323,9 +523,17 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
         _titleController.text.trim().isEmpty ||
         _descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all fields'),
-          backgroundColor: Colors.redAccent,
+        SnackBar(
+          content: const Text(
+            'Please fill in all fields',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
+          backgroundColor: const Color(0xFFFF375F),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
         ),
       );
       return;
@@ -340,111 +548,182 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
     Navigator.pop(context, newTip);
   }
 
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'University':
+        return const Color(0xFF5856D6);
+      case 'Food':
+        return const Color(0xFFFF9F0A);
+      case 'Sports':
+        return const Color(0xFF30D158);
+      case 'Shopping':
+        return const Color(0xFFFF375F);
+      case 'Tech':
+        return const Color(0xFF0A84FF);
+      case 'Travel':
+        return const Color(0xFF64D2FF);
+      case 'Finance':
+        return const Color(0xFFFFD60A);
+      default:
+        return const Color(0xFF0A84FF);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Get category names without emojis, skip "All"
     final categoryNames = widget.categories
-        .skip(1)
-        .map((c) => c.substring(2).trim())
+        .where((c) => c != 'All')
         .toList();
 
     return Scaffold(
+      backgroundColor: const Color(0xFF000000),
       appBar: AppBar(
-        title: const Text(
-          'Share a Tip',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+        backgroundColor: const Color(0xFF000000),
+        elevation: 0,
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Center(
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: Color(0xFF0A84FF),
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
           ),
         ),
-        backgroundColor: const Color(0xFF1E1E1E),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        leadingWidth: 80,
+        title: const Text(
+          'New Tip',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            fontSize: 17,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          GestureDetector(
+            onTap: _submitTip,
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0A84FF),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Text(
+                'Post',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Text(
-              'Got a life hack? Share it! 💡',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 24),
-
             // Category Selector
             const Text(
               'Category',
               style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+                color: Color(0xFF8E8E93),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: categoryNames.map((category) {
                 final isSelected = _selectedCategory == category;
+                final color = _getCategoryColor(category);
                 return GestureDetector(
                   onTap: () {
                     setState(() {
                       _selectedCategory = category;
                     });
                   },
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+                      horizontal: 14,
+                      vertical: 8,
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF6C63FF)
-                          : const Color(0xFF2A2A2A),
-                      borderRadius: BorderRadius.circular(20),
+                          ? color.withOpacity(0.2)
+                          : const Color(0xFF1C1C1E),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected
-                            ? const Color(0xFF6C63FF)
-                            : const Color(0xFF3A3A3A),
+                            ? color.withOpacity(0.5)
+                            : Colors.transparent,
+                        width: 1.5,
                       ),
                     ),
-                    child: Text(
-                      category,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.grey[400],
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          categoryIcons[category],
+                          size: 16,
+                          color: isSelected ? color : const Color(0xFF8E8E93),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          category,
+                          style: TextStyle(
+                            color: isSelected ? color : const Color(0xFF8E8E93),
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
             // Title Field
             const Text(
               'Title',
               style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+                color: Color(0xFF8E8E93),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             TextField(
               controller: _titleController,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
               decoration: InputDecoration(
-                hintText: 'e.g. "Students get 20% off at Apple Store"',
-                hintStyle: TextStyle(color: Colors.grey[600]),
+                hintText: 'What\'s the tip?',
+                hintStyle: const TextStyle(
+                  color: Color(0xFF48484A),
+                  fontWeight: FontWeight.w400,
+                ),
                 filled: true,
-                fillColor: const Color(0xFF2A2A2A),
+                fillColor: const Color(0xFF1C1C1E),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -452,33 +731,45 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(
-                    color: Color(0xFF6C63FF),
-                    width: 2,
+                    color: Color(0xFF0A84FF),
+                    width: 1.5,
                   ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
             // Description Field
             const Text(
               'Description',
               style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+                color: Color(0xFF8E8E93),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             TextField(
               controller: _descriptionController,
-              style: const TextStyle(color: Colors.white),
-              maxLines: 5,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
+              maxLines: 6,
               decoration: InputDecoration(
-                hintText: 'Describe the tip in detail...',
-                hintStyle: TextStyle(color: Colors.grey[600]),
+                hintText: 'Share the details...',
+                hintStyle: const TextStyle(
+                  color: Color(0xFF48484A),
+                  fontWeight: FontWeight.w400,
+                ),
                 filled: true,
-                fillColor: const Color(0xFF2A2A2A),
+                fillColor: const Color(0xFF1C1C1E),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -486,34 +777,13 @@ class _SubmitTipScreenState extends State<SubmitTipScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(
-                    color: Color(0xFF6C63FF),
-                    width: 2,
+                    color: Color(0xFF0A84FF),
+                    width: 1.5,
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Submit Button
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _submitTip,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Submit Tip ✨',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
                 ),
               ),
             ),
