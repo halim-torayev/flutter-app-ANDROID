@@ -182,11 +182,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // FAB + button
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Will add submit screen later
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Submit screen coming soon!')),
+        onPressed: () async {
+          final newTip = await Navigator.push<Map<String, String>>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SubmitTipScreen(categories: categories),
+            ),
           );
+          if (newTip != null) {
+            setState(() {
+              tips.insert(0, newTip); // Add to top of feed
+            });
+          }
         },
         backgroundColor: const Color(0xFF6C63FF),
         child: const Icon(Icons.add, color: Colors.white, size: 28),
@@ -285,6 +292,233 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class SubmitTipScreen extends StatefulWidget {
+  final List<String> categories;
+
+  const SubmitTipScreen({super.key, required this.categories});
+
+  @override
+  State<SubmitTipScreen> createState() => _SubmitTipScreenState();
+}
+
+class _SubmitTipScreenState extends State<SubmitTipScreen> {
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  String? _selectedCategory;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _submitTip() {
+    if (_selectedCategory == null ||
+        _titleController.text.trim().isEmpty ||
+        _descriptionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in all fields'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final newTip = {
+      'category': _selectedCategory!,
+      'title': _titleController.text.trim(),
+      'description': _descriptionController.text.trim(),
+    };
+
+    Navigator.pop(context, newTip);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Get category names without emojis, skip "All"
+    final categoryNames = widget.categories
+        .skip(1)
+        .map((c) => c.substring(2).trim())
+        .toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Share a Tip',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: const Color(0xFF1E1E1E),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Text(
+              'Got a life hack? Share it! 💡',
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Category Selector
+            const Text(
+              'Category',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: categoryNames.map((category) {
+                final isSelected = _selectedCategory == category;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedCategory = category;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFF6C63FF)
+                          : const Color(0xFF2A2A2A),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF6C63FF)
+                            : const Color(0xFF3A3A3A),
+                      ),
+                    ),
+                    child: Text(
+                      category,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.grey[400],
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+
+            // Title Field
+            const Text(
+              'Title',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _titleController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'e.g. "Students get 20% off at Apple Store"',
+                hintStyle: TextStyle(color: Colors.grey[600]),
+                filled: true,
+                fillColor: const Color(0xFF2A2A2A),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF6C63FF),
+                    width: 2,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Description Field
+            const Text(
+              'Description',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _descriptionController,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 5,
+              decoration: InputDecoration(
+                hintText: 'Describe the tip in detail...',
+                hintStyle: TextStyle(color: Colors.grey[600]),
+                filled: true,
+                fillColor: const Color(0xFF2A2A2A),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF6C63FF),
+                    width: 2,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            // Submit Button
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _submitTip,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6C63FF),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Submit Tip ✨',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
