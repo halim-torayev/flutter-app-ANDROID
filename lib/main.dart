@@ -296,7 +296,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     itemBuilder: (context, index) {
                       final tip =
                           tips[index].data() as Map<String, dynamic>;
-                      return _buildTipCard(tip, index);
+                      final docId = tips[index].id;
+                      return _buildTipCard(tip, index, docId);
                     },
                   );
                 },
@@ -348,6 +349,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 'authorEmail': user?.email ?? '',
                 'authorPhoto': user?.photoURL ?? '',
                 'authorId': user?.uid ?? '',
+                'upvotes': 0,
+                'upvotedBy': [],
                 'createdAt': FieldValue.serverTimestamp(),
               });
             }
@@ -648,9 +651,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildTipCard(Map<String, dynamic> tip, int index) {
+  Widget _buildTipCard(Map<String, dynamic> tip, int index, String docId) {
     final authorName = tip['authorName'] ?? 'Anonymous';
     final authorPhoto = tip['authorPhoto'] ?? '';
+    final upvotes = tip['upvotes'] ?? 0;
+    final List<dynamic> upvotedBy = tip['upvotedBy'] ?? [];
+    final currentUserId = AuthService.currentUser?.uid;
+    final hasUpvoted = currentUserId != null && upvotedBy.contains(currentUserId);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -665,7 +672,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Row(
               children: [
-                // Author avatar or category icon
                 authorPhoto.isNotEmpty
                     ? CircleAvatar(
                         radius: 18,
@@ -763,7 +769,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(height: 12),
             Row(
               children: [
-                _buildActionButton(Icons.arrow_upward_rounded, '0'),
+                // Upvote button
+                GestureDetector(
+                  onTap: () => _handleUpvote(docId, hasUpvoted),
+                  child: Row(
+                    children: [
+                      Icon(
+                        hasUpvoted
+                            ? Icons.arrow_upward_rounded
+                            : Icons.arrow_upward_rounded,
+                        color: hasUpvoted
+                            ? const Color(0xFF0A84FF)
+                            : const Color(0xFF48484A),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$upvotes',
+                        style: TextStyle(
+                          color: hasUpvoted
+                              ? const Color(0xFF0A84FF)
+                              : const Color(0xFF48484A),
+                          fontSize: 12,
+                          fontWeight: hasUpvoted
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(width: 16),
                 _buildActionButton(Icons.chat_bubble_outline_rounded, '0'),
                 const SizedBox(width: 16),
@@ -780,6 +815,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  Future<void> _handleUpvote(String docId, bool hasUpvoted) async {
+    if (!AuthService.isSignedIn) {
+      final user = await _showSignInPrompt();
+      if (user == null) return;
+      setState(() {});
+    }
+
+    final userId = AuthService.currentUser!.uid;
+    final docRef = tipsCollection.doc(docId);
+
+    if (hasUpvoted) {
+      // Remove upvote
+      await docRef.update({
+        'upvotes': FieldValue.increment(-1),
+        'upvotedBy': FieldValue.arrayRemove([userId]),
+      });
+    } else {
+      // Add upvote
+      await docRef.update({
+        'upvotes': FieldValue.increment(1),
+        'upvotedBy': FieldValue.arrayUnion([userId]),
+      });
+    }
   }
 
   Widget _buildActionButton(IconData icon, String label) {
