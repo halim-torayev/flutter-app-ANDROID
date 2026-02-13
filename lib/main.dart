@@ -110,9 +110,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   };
 
   int selectedCategoryIndex = 0;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   final CollectionReference tipsCollection =
       FirebaseFirestore.instance.collection('tips');
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +193,61 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
 
-            const SizedBox(height: 16),
+            // Search bar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
+                },
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search tips...',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFF48484A),
+                    fontSize: 15,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFF48484A),
+                    size: 20,
+                  ),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                          child: const Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF48484A),
+                            size: 18,
+                          ),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: const Color(0xFF1C1C1E),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
 
             // Category Tabs
             SizedBox(
@@ -284,7 +346,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   }
 
-                  final tips = snapshot.data?.docs ?? [];
+                  final allTips = snapshot.data?.docs ?? [];
+
+                  // Filter by search query
+                  final tips = _searchQuery.isEmpty
+                      ? allTips
+                      : allTips.where((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final title = (data['title'] ?? '').toString().toLowerCase();
+                          final desc = (data['description'] ?? '').toString().toLowerCase();
+                          final author = (data['authorName'] ?? '').toString().toLowerCase();
+                          return title.contains(_searchQuery) ||
+                              desc.contains(_searchQuery) ||
+                              author.contains(_searchQuery);
+                        }).toList();
+
+                  if (tips.isEmpty && _searchQuery.isNotEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.search_off_rounded,
+                            color: Color(0xFF48484A),
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No tips found for "$_searchQuery"',
+                            style: const TextStyle(
+                              color: Color(0xFF8E8E93),
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
                   if (tips.isEmpty) {
                     return _buildEmptyState();
