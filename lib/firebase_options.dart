@@ -59,4 +59,5 @@ class DefaultFirebaseOptions {
     projectId: 'tips-app-2f709',
     storageBucket: 'tips-app-2f709.firebasestorage.app',
   );
+
 }

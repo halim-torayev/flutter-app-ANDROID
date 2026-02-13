@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -40,6 +42,43 @@ class TipsApp extends StatelessWidget {
   }
 }
 
+// ─── Auth Service ───────────────────────────────────────────
+class AuthService {
+  static final FirebaseAuth _auth = FirebaseAuth.instance;
+  static final GoogleSignIn _googleSignIn = GoogleSignIn();
+
+  static User? get currentUser => _auth.currentUser;
+  static bool get isSignedIn => _auth.currentUser != null;
+
+  static Future<User?> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null; // User cancelled
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
+      return userCredential.user;
+    } catch (e) {
+      debugPrint('Google Sign-In error: $e');
+      return null;
+    }
+  }
+
+  static Future<void> signOut() async {
+    await _googleSignIn.signOut();
+    await _auth.signOut();
+  }
+}
+
+// ─── Home Screen ────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -72,7 +111,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   int selectedCategoryIndex = 0;
 
-  // Firestore reference
   final CollectionReference tipsCollection =
       FirebaseFirestore.instance.collection('tips');
 
@@ -113,18 +151,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1C1C1E),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Icon(
-                      Icons.person_rounded,
-                      color: Color(0xFF8E8E93),
-                      size: 20,
-                    ),
+                  // Profile icon — shows user avatar or sign-in button
+                  StreamBuilder<User?>(
+                    stream: FirebaseAuth.instance.authStateChanges(),
+                    builder: (context, snapshot) {
+                      final user = snapshot.data;
+                      return GestureDetector(
+                        onTap: () => _showProfileMenu(user),
+                        child: user?.photoURL != null
+                            ? CircleAvatar(
+                                radius: 18,
+                                backgroundImage:
+                                    NetworkImage(user!.photoURL!),
+                                backgroundColor: const Color(0xFF1C1C1E),
+                              )
+                            : Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1C1C1E),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: const Icon(
+                                  Icons.person_rounded,
+                                  color: Color(0xFF8E8E93),
+                                  size: 20,
+                                ),
+                              ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -256,6 +311,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         margin: const EdgeInsets.only(bottom: 8),
         child: GestureDetector(
           onTap: () async {
+            // Require sign-in to post
+            if (!AuthService.isSignedIn) {
+              final user = await _showSignInPrompt();
+              if (user == null) return;
+            }
+
+            if (!mounted) return;
+
             final newTip = await Navigator.push<Map<String, String>>(
               context,
               PageRouteBuilder(
@@ -278,9 +341,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             );
             if (newTip != null) {
-              // Save to Firestore
+              final user = AuthService.currentUser;
               await tipsCollection.add({
                 ...newTip,
+                'authorName': user?.displayName ?? 'Anonymous',
+                'authorEmail': user?.email ?? '',
+                'authorPhoto': user?.photoURL ?? '',
+                'authorId': user?.uid ?? '',
                 'createdAt': FieldValue.serverTimestamp(),
               });
             }
@@ -309,6 +376,233 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  // ─── Sign-in prompt ───────────────────────────────────────
+  Future<User?> _showSignInPrompt() async {
+    User? user;
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1C1C1E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF48484A),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0A84FF), Color(0xFF5856D6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.edit_rounded,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Sign in to post',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Sign in with your Google account to\nshare tips with the community.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF8E8E93),
+                  fontSize: 15,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: () async {
+                  user = await AuthService.signInWithGoogle();
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.network(
+                        'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                        width: 20,
+                        height: 20,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.g_mobiledata_rounded,
+                                color: Colors.black87, size: 24),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Continue with Google',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2C2C2E),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Not now',
+                      style: TextStyle(
+                        color: Color(0xFF8E8E93),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+    return user;
+  }
+
+  // ─── Profile menu ─────────────────────────────────────────
+  void _showProfileMenu(User? user) {
+    if (user == null) {
+      // Not signed in — show sign in prompt
+      _showSignInPrompt().then((_) => setState(() {}));
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1C1C1E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF48484A),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              CircleAvatar(
+                radius: 36,
+                backgroundImage: user.photoURL != null
+                    ? NetworkImage(user.photoURL!)
+                    : null,
+                backgroundColor: const Color(0xFF0A84FF),
+                child: user.photoURL == null
+                    ? Text(
+                        (user.displayName ?? 'U')[0].toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                user.displayName ?? 'User',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                user.email ?? '',
+                style: const TextStyle(
+                  color: Color(0xFF8E8E93),
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: () async {
+                  await AuthService.signOut();
+                  if (context.mounted) Navigator.pop(context);
+                  setState(() {});
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF375F).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Sign Out',
+                      style: TextStyle(
+                        color: Color(0xFFFF375F),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -355,6 +649,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildTipCard(Map<String, dynamic> tip, int index) {
+    final authorName = tip['authorName'] ?? 'Anonymous';
+    final authorPhoto = tip['authorPhoto'] ?? '';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -368,35 +665,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        _getCategoryColor(tip['category'] ?? ''),
-                        _getCategoryColor(tip['category'] ?? '')
-                            .withOpacity(0.6),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    categoryIcons[tip['category']] ?? Icons.lightbulb_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
+                // Author avatar or category icon
+                authorPhoto.isNotEmpty
+                    ? CircleAvatar(
+                        radius: 18,
+                        backgroundImage: NetworkImage(authorPhoto),
+                        backgroundColor: const Color(0xFF2C2C2E),
+                      )
+                    : Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              _getCategoryColor(tip['category'] ?? ''),
+                              _getCategoryColor(tip['category'] ?? '')
+                                  .withOpacity(0.6),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          categoryIcons[tip['category']] ??
+                              Icons.lightbulb_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Anonymous',
-                        style: TextStyle(
+                      Text(
+                        authorName,
+                        style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                           fontSize: 14,
@@ -518,6 +823,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
+// ─── Submit Tip Screen ──────────────────────────────────────
 class SubmitTipScreen extends StatefulWidget {
   final List<String> categories;
 
