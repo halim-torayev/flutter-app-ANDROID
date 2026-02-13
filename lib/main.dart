@@ -449,6 +449,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 'authorId': user?.uid ?? '',
                 'upvotes': 0,
                 'upvotedBy': [],
+                'commentCount': 0,
                 'createdAt': FieldValue.serverTimestamp(),
               });
             }
@@ -898,7 +899,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
                 const SizedBox(width: 16),
-                _buildActionButton(Icons.chat_bubble_outline_rounded, '0'),
+                // Comment button
+                GestureDetector(
+                  onTap: () => _showComments(docId),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        color: Color(0xFF48484A),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${tip['commentCount'] ?? 0}',
+                        style: const TextStyle(
+                          color: Color(0xFF48484A),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(width: 16),
                 _buildActionButton(Icons.bookmark_outline_rounded, ''),
                 const Spacer(),
@@ -941,6 +963,245 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'upvotedBy': FieldValue.arrayUnion([userId]),
       });
     }
+  }
+
+  void _showComments(String docId) {
+    final commentController = TextEditingController();
+    final commentsRef = tipsCollection.doc(docId).collection('comments');
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: const BoxDecoration(
+            color: Color(0xFF1C1C1E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 8),
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF48484A),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Comments',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(height: 0.5, color: const Color(0xFF2C2C2E)),
+
+              // Comments list
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: commentsRef
+                      .orderBy('createdAt', descending: false)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF0A84FF),
+                        ),
+                      );
+                    }
+
+                    final comments = snapshot.data?.docs ?? [];
+
+                    if (comments.isEmpty) {
+                      return const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              color: Color(0xFF48484A),
+                              size: 40,
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              'No comments yet',
+                              style: TextStyle(
+                                color: Color(0xFF8E8E93),
+                                fontSize: 15,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Be the first to comment!',
+                              style: TextStyle(
+                                color: Color(0xFF48484A),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      itemCount: comments.length,
+                      itemBuilder: (context, index) {
+                        final comment =
+                            comments[index].data() as Map<String, dynamic>;
+                        final photo = comment['authorPhoto'] ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              photo.isNotEmpty
+                                  ? CircleAvatar(
+                                      radius: 16,
+                                      backgroundImage: NetworkImage(photo),
+                                      backgroundColor:
+                                          const Color(0xFF2C2C2E),
+                                    )
+                                  : const CircleAvatar(
+                                      radius: 16,
+                                      backgroundColor: Color(0xFF2C2C2E),
+                                      child: Icon(
+                                        Icons.person_rounded,
+                                        color: Color(0xFF8E8E93),
+                                        size: 16,
+                                      ),
+                                    ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      comment['authorName'] ?? 'Anonymous',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      comment['text'] ?? '',
+                                      style: const TextStyle(
+                                        color: Color(0xFFAEAEB2),
+                                        fontSize: 14,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Input field
+              Container(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 8,
+                  top: 8,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                ),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF2C2C2E),
+                  border: Border(
+                    top: BorderSide(color: Color(0xFF3A3A3C), width: 0.5),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: commentController,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: AuthService.isSignedIn
+                              ? 'Add a comment...'
+                              : 'Sign in to comment',
+                          hintStyle: const TextStyle(
+                            color: Color(0xFF48484A),
+                            fontSize: 15,
+                          ),
+                          border: InputBorder.none,
+                          enabled: AuthService.isSignedIn,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () async {
+                        if (!AuthService.isSignedIn) {
+                          Navigator.pop(context);
+                          final user = await _showSignInPrompt();
+                          if (user != null) {
+                            setState(() {});
+                            _showComments(docId);
+                          }
+                          return;
+                        }
+
+                        final text = commentController.text.trim();
+                        if (text.isEmpty) return;
+
+                        final user = AuthService.currentUser!;
+                        commentController.clear();
+
+                        await commentsRef.add({
+                          'text': text,
+                          'authorName': user.displayName ?? 'Anonymous',
+                          'authorPhoto': user.photoURL ?? '',
+                          'authorId': user.uid,
+                          'createdAt': FieldValue.serverTimestamp(),
+                        });
+
+                        await tipsCollection.doc(docId).update({
+                          'commentCount': FieldValue.increment(1),
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: const Icon(
+                          Icons.send_rounded,
+                          color: Color(0xFF0A84FF),
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showTipOptions(String docId, String authorId) {
